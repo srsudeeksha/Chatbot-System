@@ -2472,7 +2472,7 @@ def show_enhanced_chat_history():
             date_range = st.selectbox("📅 Date Range", [
                 "All Time", "Last 7 days", "Last 30 days", "Last 90 days", "Custom Range"
             ])
-            start_date, end_date = None, None
+            
             if date_range == "Custom Range":
                 start_date = st.date_input("Start Date")
                 end_date = st.date_input("End Date")
@@ -2481,7 +2481,7 @@ def show_enhanced_chat_history():
             agent_filter = st.selectbox("🤖 Agent Type", ["All", "Main", "GitHub", "Gemini", "Planning"])
             sort_order = st.selectbox("📊 Sort Order", ["Newest First", "Oldest First"])
     
-    # Build SQL query
+    # Build query based on filters
     query = """
         SELECT content, message_type, timestamp, agent_type, metadata, id
         FROM conversations 
@@ -2489,6 +2489,7 @@ def show_enhanced_chat_history():
     """
     params = [st.session_state.user_id]
     
+    # Apply filters
     if search_term:
         query += " AND content LIKE ?"
         params.append(f"%{search_term}%")
@@ -2501,70 +2502,81 @@ def show_enhanced_chat_history():
         query += " AND (agent_type = ? OR agent_type IS NULL)"
         params.append(agent_filter.lower())
     
+    # Apply date filter
     if date_range == "Last 7 days":
         query += " AND timestamp >= date('now', '-7 days')"
     elif date_range == "Last 30 days":
         query += " AND timestamp >= date('now', '-30 days')"
     elif date_range == "Last 90 days":
         query += " AND timestamp >= date('now', '-90 days')"
-    elif date_range == "Custom Range" and start_date and end_date:
-        try:
-            query += " AND date(timestamp) BETWEEN ? AND ?"
-            params.extend([start_date.isoformat(), end_date.isoformat()])
-        except:
-            st.warning("Please select both start and end dates.")
-            return
-
-    query += " ORDER BY timestamp DESC" if sort_order == "Newest First" else " ORDER BY timestamp ASC"
-    query += " LIMIT 100"
+    elif date_range == "Custom Range" and 'start_date' in locals() and 'end_date' in locals():
+        query += " AND date(timestamp) BETWEEN ? AND ?"
+        params.extend([start_date.isoformat(), end_date.isoformat()])
+    
+    # Apply sorting
+    if sort_order == "Newest First":
+        query += " ORDER BY timestamp DESC"
+    else:
+        query += " ORDER BY timestamp ASC"
+    
+    query += " LIMIT 100"  # Limit results for performance
     
     # Execute query
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(query, params)
         messages = cursor.fetchall()
-
-        # Total count
-        count_query = query.replace(
-            "SELECT content, message_type, timestamp, agent_type, metadata, id",
-            "SELECT COUNT(*)"
-        ).replace(" LIMIT 100", "")
+        
+        # Get total count
+        count_query = query.replace("SELECT content, message_type, timestamp, agent_type, metadata, id", "SELECT COUNT(*)")
+        count_query = count_query.replace(" LIMIT 100", "")
         cursor.execute(count_query, params)
         total_count = cursor.fetchone()[0]
     
+    # Display results
     st.markdown(f"### 💬 Found {len(messages)} messages (Total: {total_count})")
     
     if not messages:
         st.info("No messages found matching your criteria.")
         return
-
+    
     # Group messages by date
     messages_by_date = {}
     for msg in messages:
-        date = msg['timestamp'][:10]
-        messages_by_date.setdefault(date, []).append(msg)
+        date = msg['timestamp'][:10]  # Extract date part
+        if date not in messages_by_date:
+            messages_by_date[date] = []
+        messages_by_date[date].append(msg)
     
+    # Display messages grouped by date
     for date, date_messages in messages_by_date.items():
         st.markdown(f"#### 📅 {date}")
         
         for msg in date_messages:
             content = msg['content']
             msg_type = msg['message_type']
-            timestamp = msg['timestamp'][11:19]
-            agent_type = msg['agent_type'] or "main"
+            timestamp = msg['timestamp'][11:19]  # Extract time part
+            agent_type = msg['agent_type'] or 'main'
+            
+            # Parse metadata if available
             metadata = {}
-
             try:
                 if msg['metadata']:
                     metadata = json.loads(msg['metadata'])
             except:
                 pass
-
-            icon = "👤" if msg_type == "user" else "🤖"
-            bg_color = "#e3f2fd" if msg_type == "user" else "#f3e5f5"
-            border_color = "#2196f3" if msg_type == "user" else "#9c27b0"
-            agent_label = agent_type.title() if agent_type and agent_type != "main" else ""
-
+            
+            # Message styling
+            if msg_type == "user":
+                icon = "👤"
+                bg_color = "#e3f2fd"
+                border_color = "#2196f3"
+            else:
+                icon = "🤖"
+                bg_color = "#f3e5f5"
+                border_color = "#9c27b0"
+            
+            # Display message
             with st.container():
                 st.markdown(f"""
                 <div style="background: {bg_color}; padding: 15px; border-radius: 12px; 
@@ -2573,17 +2585,16 @@ def show_enhanced_chat_history():
                         <span style="font-size: 1.3rem;">{icon}</span>
                         <strong>{msg_type.title()}</strong>
                         <span style="color: #666; font-size: 0.9rem;">@ {timestamp}</span>
-                        {f'<span style="background: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">{agent_label}</span>' if agent_label else ''}
+                        {f'<span style="background: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">{agent_type}</span>' if agent_type != 'main' else ''}
                     </div>
-                    <div style="white-space: pre-wrap; line-height: 1.5;">{html.escape(content)}</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5;">{content}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
+                
+                # Show metadata if available
                 if metadata:
                     with st.expander(f"📋 Message Details (ID: {msg['id']})", expanded=False):
                         st.json(metadata)
-
-                st.markdown("""<div style="height: 1px; background: #ddd; margin: 20px 0;"></div>""", unsafe_allow_html=True)
     
     # Export functionality
     st.markdown("---")
@@ -2652,6 +2663,7 @@ def show_enhanced_chat_history():
                 
                 st.success("✅ Chat history cleared successfully!")
                 st.rerun()
+
 
 # SYSTEM SETTINGS PAGE
 
