@@ -4197,5 +4197,49 @@ apply_enhanced_styling()
 
 user_input = st.chat_input("Type your request here...")
 if user_input:
+    # Process the AI response
     response = st.session_state.ai_system.process_request(user_input)
+    
+    # Display the response
     st.write(response["final_output"])
+    
+    # ✅ ADD THIS: Save both messages to database
+    if st.session_state.user_id:  # Make sure user_id exists
+        db = DatabaseManager()
+        
+        try:
+            with db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Save user message
+                cursor.execute("""
+                    INSERT INTO conversations (user_id, content, message_type, agent_type, metadata, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    st.session_state.user_id,
+                    user_input,
+                    "user",
+                    "main",
+                    None,
+                    datetime.now().isoformat()
+                ))
+                
+                # Save AI response
+                cursor.execute("""
+                    INSERT INTO conversations (user_id, content, message_type, agent_type, metadata, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    st.session_state.user_id,
+                    response["final_output"],
+                    "assistant", 
+                    "main",
+                    json.dumps(response) if isinstance(response, dict) else None,  # Save full response as metadata
+                    datetime.now().isoformat()
+                ))
+                
+                conn.commit()
+                
+        except Exception as e:
+            st.error(f"Error saving to database: {e}")
+    else:
+        st.warning("User not logged in - messages not saved to database")
