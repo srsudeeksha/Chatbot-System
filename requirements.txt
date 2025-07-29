@@ -1,0 +1,9 @@
+streamlit
+langchain
+langchain-groq
+langchain-google-genai
+langgraph
+mysql-connector-python
+PyGithub
+python-dotenv
+passlib[bcrypt]

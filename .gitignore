@@ -1,0 +1,99 @@
+# Environment variables
+.env
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# Streamlit cache
+.streamlit/
+
+# Temporary files and build artifacts
+*.log
+*.tmp
+*.bak
+temp_*.sh
+temp_*.json
+
+# MySQL and database files (if any are generated locally)
+*.sql
+*.db
+
+# IDE specific
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Dependency directories (installed via pip)
+node_modules/  # If you add JavaScript later
+dist/
+build/
+
+# Secure user data (if not managed by MySQL)
+secure_users.json
+
+# Any other project-specific temporary files
+*.out
+*.pid
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# Configuration files that might contain secrets
+mcp-config.json
+config.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# Cache directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
