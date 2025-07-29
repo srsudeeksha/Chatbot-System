@@ -7,3 +7,4 @@ mysql-connector-python
 PyGithub
 python-dotenv
 passlib[bcrypt]
+transformers
